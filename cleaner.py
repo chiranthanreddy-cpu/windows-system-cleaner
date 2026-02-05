@@ -54,9 +54,18 @@ def clean_folder(folder_path, dry_run=False):
         logging.warning(f"Path not found: {folder_path}")
         return 0, 0
 
+    # Safety: Don't touch files modified in the last 24 hours
+    now = datetime.now().timestamp()
+    grace_period = 24 * 60 * 60 # 24 hours in seconds
+
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
         try:
+            # Get last modified time
+            mtime = os.path.getmtime(item_path)
+            if (now - mtime) < grace_period:
+                continue # Skip recently modified files for safety
+
             current_size = get_size(item_path)
             
             if dry_run:
