@@ -4,17 +4,36 @@ import ctypes
 import platform
 import argparse
 import logging
+import json
 from datetime import datetime
 
 # Setup logging
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(BASE_DIR, "cleanup.log")
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("cleanup.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
+
+def load_config():
+    default_config = {
+        "grace_period_hours": 24,
+        "empty_recycle_bin": True,
+        "targets": ["TEMP", "SYSTEM_TEMP", "PREFETCH"]
+    }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logging.error(f"Error loading config.json: {e}. Using defaults.")
+    return default_config
 
 def is_admin():
     try:
@@ -45,7 +64,7 @@ def format_bytes(size):
         n += 1
     return f"{size:.2f} {power_labels[n]}B"
 
-def clean_folder(folder_path, dry_run=False):
+def clean_folder(folder_path, grace_period_hours, dry_run=False):
     logging.info(f"Checking: {folder_path}")
     files_deleted = 0
     size_cleared = 0
@@ -54,9 +73,9 @@ def clean_folder(folder_path, dry_run=False):
         logging.warning(f"Path not found: {folder_path}")
         return 0, 0
 
-    # Safety: Don't touch files modified in the last 24 hours
+    # Safety: Don't touch files modified in the last X hours
     now = datetime.now().timestamp()
-    grace_period = 24 * 60 * 60 # 24 hours in seconds
+    grace_period = grace_period_hours * 60 * 60
 
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
@@ -107,6 +126,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted without actually deleting")
     args = parser.parse_args()
 
+    config = load_config()
+
     if platform.system() != "Windows":
         logging.error("This script is designed for Windows only.")
         return
@@ -115,13 +136,15 @@ def main():
     if args.dry_run:
         logging.info("!!! DRY RUN MODE ACTIVE !!!")
     
-    targets = [
-        os.environ.get('TEMP'),
-        os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Temp'),
-    ]
+    targets = []
+    if "TEMP" in config["targets"]:
+        targets.append(os.environ.get('TEMP'))
+    if "SYSTEM_TEMP" in config["targets"]:
+        targets.append(os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Temp'))
     
     if is_admin():
-        targets.append(os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Prefetch'))
+        if "PREFETCH" in config["targets"]:
+            targets.append(os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Prefetch'))
     else:
         logging.info("Note: Run as Administrator to clean System Temp and Prefetch folders.")
 
@@ -130,11 +153,12 @@ def main():
 
     for target in targets:
         if target:
-            files, size = clean_folder(target, dry_run=args.dry_run)
+            files, size = clean_folder(target, config["grace_period_hours"], dry_run=args.dry_run)
             total_files += files
             total_size += size
 
-    empty_recycle_bin(dry_run=args.dry_run)
+    if config["empty_recycle_bin"]:
+        empty_recycle_bin(dry_run=args.dry_run)
     
     logging.info("\n--- Summary ---")
     action = "Would be deleted" if args.dry_run else "Deleted"

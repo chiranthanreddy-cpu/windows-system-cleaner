@@ -1,0 +1,9 @@
+{
+    "grace_period_hours": 24,
+    "empty_recycle_bin": true,
+    "targets": [
+        "TEMP",
+        "SYSTEM_TEMP",
+        "PREFETCH"
+    ]
+}

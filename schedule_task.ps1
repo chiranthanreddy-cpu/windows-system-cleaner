@@ -1,13 +1,13 @@
 # Windows System Cleaner - Task Scheduler Setup
 $ScriptName = "cleaner.py"
-$CurrentDir = Get-Location
-$PythonPath = (Get-Command python).Source
+$CurrentDir = "C:\Users\chiru\windows-system-cleaner"
+$PythonPath = (Get-Command pythonw).Source
 $TaskName = "WindowsSystemCleanerWeekly"
 $ActionExecutable = $PythonPath
 $ActionArguments = "`"$CurrentDir\$ScriptName`""
 
 # Create the action
-$Action = New-ScheduledTaskAction -Execute $ActionExecutable -Argument $ActionArguments
+$Action = New-ScheduledTaskAction -Execute $ActionExecutable -Argument $ActionArguments -WorkingDirectory $CurrentDir
 
 # Create the trigger (Weekly on Saturday at 10:00 AM)
 $Trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Saturday -At 10:00am
