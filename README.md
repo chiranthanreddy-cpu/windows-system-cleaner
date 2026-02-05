@@ -18,13 +18,20 @@ Run the script using Python:
 python cleaner.py
 ```
 
-### Scheduling Weekly
-To automatically run this every Saturday at 10:00 AM:
-1. Open PowerShell as Administrator.
-2. Run the setup script:
+### Scheduling Weekly (Background Mode)
+To automatically run this cleanup every Saturday at 10:00 AM without any terminal windows flashing:
+
+1. **Open PowerShell as Administrator** (Right-click Start > Terminal (Admin) or PowerShell (Admin)).
+2. Navigate to this folder:
    ```powershell
-   ./schedule_task.ps1
+   cd "C:\Users\chiru\windows-system-cleaner"
    ```
+3. Run the setup script:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force; ./schedule_task.ps1
+   ```
+
+*Note: The script is scheduled using `pythonw.exe` to ensure it runs silently in the background.*
 
 ### Dry Run (Recommended first)
 To see what will be deleted without actually removing any files:
