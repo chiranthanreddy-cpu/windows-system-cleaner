@@ -16,8 +16,8 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-splash = Splash(
-    'final_splash.png',
+    splash = Splash(
+    'assets/final_splash.png',
     binaries=a.binaries,
     datas=a.datas,
     text_pos=None,
@@ -47,5 +47,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['logo.ico'],
+    icon=['assets/logo.ico'],
+    manifest='WindowsSystemCleaner.exe.manifest',
 )
