@@ -3,7 +3,7 @@
 A powerful utility to automate the cleanup of temporary files and the Recycle Bin on Windows.
 
 ## Features
-- **Modern GUI (Lumina Cleaner Pro):** A professional, dark-themed dashboard built with CustomTkinter.
+- **Modern GUI:** A professional, dark-themed dashboard built with CustomTkinter.
 - **Deep Cleaning:** Targets User Temp, System Temp, Prefetch, **Discord Cache**, and **Spotify Cache**.
 - **Dev-Bloat Hunter:** Safely scans for old `node_modules` and `venv` folders (30+ days untouched).
 - **Safety First:** 

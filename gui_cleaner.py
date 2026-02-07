@@ -159,7 +159,7 @@ class CleanerEngine:
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Lumina Cleaner Pro")
+        self.title("Windows System Cleaner")
         self.geometry("900x600")
         
         # Windows Taskbar Icon Fix (Force OS to recognize custom icon)
@@ -193,7 +193,7 @@ class App(ctk.CTk):
             self.logo_img_label = ctk.CTkLabel(self.sidebar, image=self.logo_image, text="")
             self.logo_img_label.pack(pady=(30, 0))
 
-        self.logo_text = ctk.CTkLabel(self.sidebar, text="LUMINA", font=ctk.CTkFont(size=24, weight="bold", family="Segoe UI"))
+        self.logo_text = ctk.CTkLabel(self.sidebar, text="CLEANER", font=ctk.CTkFont(size=24, weight="bold", family="Segoe UI"))
         self.logo_text.pack(pady=(10, 30))
 
         self.btn_dash = ctk.CTkButton(self.sidebar, text="Dashboard", fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w", command=self.show_dash)
