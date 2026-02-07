@@ -1,23 +1,13 @@
 import os
-import shutil
 import ctypes
 import json
 import time
 import logging
 from pathlib import Path
-from datetime import datetime
+from send2trash import send2trash
 
-# Setup internal engine logging
-log_dir = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))) / "WindowsSystemCleaner"
-log_dir.mkdir(exist_ok=True)
-log_file = log_dir / "engine_debug.log"
-
-logging.basicConfig(
-    filename=str(log_file),
-    level=logging.ERROR,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("CleanerEngine")
+# Professional logging: Module-level logger (Configured by the entry point)
+logger = logging.getLogger(__name__)
 
 class CleanerEngine:
     def __init__(self, config_path="config.json"):
@@ -32,13 +22,13 @@ class CleanerEngine:
             "empty_recycle_bin": True,
             "targets": ["TEMP", "SYSTEM_TEMP", "PREFETCH", "DISCORD", "SPOTIFY"],
             "dev_bloat_hunter": False,
-            "search_paths": [str(Path.home())] # Default to Home
+            "search_paths": [str(Path.home())],
+            "max_scan_depth": 3
         }
         if self.config_path.exists():
             try:
                 with open(self.config_path, "r") as f:
                     cfg = json.load(f)
-                    # Ensure new keys exist if updating from older version
                     for k, v in default_config.items():
                         if k not in cfg: cfg[k] = v
                     return cfg
@@ -63,7 +53,6 @@ class CleanerEngine:
         try:
             if path.is_file():
                 return path.stat().st_size
-            # Faster iterative size calculation
             total = 0
             with os.scandir(path) as it:
                 for entry in it:
@@ -82,7 +71,6 @@ class CleanerEngine:
         return f"{size:.2f} TB"
 
     def get_standard_targets(self):
-        paths = []
         user_appdata = os.environ.get('APPDATA')
         user_local = os.environ.get('LOCALAPPDATA')
         system_root = os.environ.get('SystemRoot', 'C:\\Windows')
@@ -95,6 +83,7 @@ class CleanerEngine:
             "SPOTIFY": os.path.join(user_local, "Spotify", "PersistentCache") if user_local else None
         }
 
+        paths = []
         for key in self.config.get("targets", []):
             path_str = target_map.get(key)
             if path_str:
@@ -103,30 +92,30 @@ class CleanerEngine:
                     paths.append((p, key))
         return paths
 
-    def find_dev_bloat(self, base_path: Path, log_callback):
-        bloat_found = []
+    def find_bloat_recursive(self, current_path: Path, depth: int, max_depth: int, log_callback):
+        """Elegant recursive search for dev artifacts"""
+        if depth > max_depth:
+            return []
+        
+        found = []
         try:
-            # Professional standard: os.scandir for high-speed traversal
-            with os.scandir(base_path) as it:
+            with os.scandir(current_path) as it:
                 for entry in it:
-                    if entry.is_dir(follow_symlinks=False) and not entry.name.startswith('.'):
-                        # Check L1
+                    if entry.is_dir(follow_symlinks=False):
+                        # Professional target detection
                         if entry.name in ["node_modules", "venv", ".venv"]:
+                            # Check if older than 30 days
                             if (time.time() - entry.stat().st_mtime) > (30 * 24 * 3600):
-                                bloat_found.append(Path(entry.path))
+                                found.append(Path(entry.path))
                         else:
-                            # Check L2/L3
-                            try:
-                                with os.scandir(entry.path) as it2:
-                                    for entry2 in it2:
-                                        if entry2.is_dir(follow_symlinks=False):
-                                            if entry2.name in ["node_modules", "venv", ".venv"]:
-                                                if (time.time() - entry2.stat().st_mtime) > (30 * 24 * 3600):
-                                                    bloat_found.append(Path(entry2.path))
-                            except PermissionError: continue
+                            # Recurse deeper if not a target
+                            found.extend(self.find_bloat_recursive(Path(entry.path), depth + 1, max_depth, log_callback))
+        except (PermissionError, FileNotFoundError):
+            pass
         except Exception as e:
-            logger.error(f"Dev-Bloat scan failed for {base_path}: {e}")
-        return bloat_found
+            logger.error(f"Error in recursive scan at {current_path}: {e}")
+            
+        return found
 
     def scan(self, log_callback):
         self.last_scan_results = []
@@ -134,7 +123,7 @@ class CleanerEngine:
         now = time.time()
         grace_period = self.config.get("grace_period_hours", 24) * 3600
 
-        # 1. Standard Targets
+        # 1. Standard Targets (System/App Caches)
         for target, cat in self.get_standard_targets():
             log_callback(f"Scanning: {cat}...")
             try:
@@ -149,13 +138,15 @@ class CleanerEngine:
             except Exception as e:
                 logger.error(f"Failed to scan {target}: {e}")
         
-        # 2. Custom Dev-Bloat Paths
+        # 2. Custom Dev-Bloat Paths (Recursive)
         if self.config.get("dev_bloat_hunter"):
+            max_depth = self.config.get("max_scan_depth", 3)
             for path_str in self.config.get("search_paths", []):
                 p = Path(path_str)
                 if p.exists():
                     log_callback(f"Hunting in: {p.name}...")
-                    for bloat_path in self.find_dev_bloat(p, log_callback):
+                    bloat_items = self.find_bloat_recursive(p, 1, max_depth, log_callback)
+                    for bloat_path in bloat_items:
                         size = self.get_size(bloat_path)
                         self.last_scan_results.append({'path': bloat_path, 'size': size, 'category': 'DEV-BLOAT'})
                         total_size += size
@@ -163,7 +154,7 @@ class CleanerEngine:
         return self.last_scan_results
 
     def clean(self, items_to_delete, log_callback):
-        """Accepted items_to_delete: list of dicts from scan result"""
+        """Professional Deletion using Send2Trash (Move to Recycle Bin)"""
         files_deleted = 0
         size_cleared = 0
         
@@ -171,21 +162,19 @@ class CleanerEngine:
             item_path = item['path']
             size = item['size']
             try:
-                log_callback(f"Deleting: {item_path.name}")
-                if item_path.is_file() or item_path.is_symlink():
-                    item_path.unlink()
-                elif item_path.is_dir():
-                    shutil.rmtree(item_path)
+                log_callback(f"Trashing: {item_path.name}")
+                # Industry standard: Send to Recycle Bin for safety
+                send2trash(str(item_path))
                 files_deleted += 1
                 size_cleared += size
             except PermissionError:
                 log_callback(f"Skipped: {item_path.name} (In use)")
             except Exception as e:
-                logger.error(f"Delete failed for {item_path}: {e}")
+                logger.error(f"Failed to trash {item_path}: {e}")
                 log_callback(f"Error: {item_path.name}")
         
         if self.config.get("empty_recycle_bin"):
-            log_callback("Emptying Recycle Bin...")
+            log_callback("Finalizing: Emptying Recycle Bin...")
             try:
                 ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 7)
             except Exception as e:
