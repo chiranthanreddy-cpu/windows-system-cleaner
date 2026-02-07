@@ -9,7 +9,6 @@ A powerful utility to automate the cleanup of temporary files and the Recycle Bi
 - **Safety First:** 
   - **Local-Only:** No internet access or data collection.
   - **Grace Period:** Automatically protects files modified in the last 24 hours.
-  - **Review Mode:** Analyze what will be deleted before committing.
 - **Empties the Recycle Bin** (Optional toggle).
 
 ## Installation
@@ -26,23 +25,18 @@ To launch the modern interface:
 2. Navigate to this folder.
 3. Run:
    ```powershell
-   python gui_cleaner.py
+   python WindowsSystemCleaner.py
    ```
 *Note: Run your terminal as **Administrator** to unlock deep system cleaning capabilities.*
 
 ## Usage (CLI)
 For a quick, text-based cleanup without a GUI:
 ```powershell
-python cleaner.py
+python SystemCleanerCLI.py
 ```
 
 ### Dry Run (Recommended first)
 To see what will be deleted without actually removing any files:
 ```powershell
-python cleaner.py --dry-run
+python SystemCleanerCLI.py --dry-run
 ```
-
-To clean system-protected folders, run your terminal as an Administrator.
-
-## Version
-2.0.0
