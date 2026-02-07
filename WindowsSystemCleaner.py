@@ -46,8 +46,14 @@ class App(ctk.CTk):
         
         self.show_dash()
 
+        # Close splash screen if running as EXE
+        self.after(200, self.close_splash)
+
+    def close_splash(self):
         if pyi_splash:
-            pyi_splash.close()
+            try:
+                pyi_splash.close()
+            except: pass
 
     def setup_sidebar(self):
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
