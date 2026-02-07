@@ -2,19 +2,13 @@ import os
 import platform
 import argparse
 import logging
+from pathlib import Path
 from cleaner_engine import CleanerEngine
 
-# Setup logging
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = os.path.join(BASE_DIR, "cleanup.log")
-
+# CLI-specific logging (The CLI is the entry point here)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE),
-        logging.StreamHandler()
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 def main():
@@ -28,31 +22,31 @@ def main():
         logging.error("This script is designed for Windows only.")
         return
 
-    logging.info("--- Windows System Cleaner v1.2 (Modular) ---")
+    logging.info("--- Windows System Cleaner v1.5 (Professional) ---")
     if args.dry_run:
         logging.info("!!! DRY RUN MODE ACTIVE !!!")
     
     if not engine.is_admin:
-        logging.info("Note: Run as Administrator to clean System Temp and Prefetch folders.")
-
-    # Logging Wrapper for the engine
-    def cli_log(msg):
-        logging.info(msg)
+        logging.info("Note: Run as Administrator for full system access.")
 
     # Scan
-    count, size = engine.scan(cli_log)
+    results = engine.scan(lambda m: logging.info(m))
     
+    if not results:
+        logging.info("No items found to clean.")
+        return
+
+    total_size = sum(item['size'] for item in results)
+    logging.info(f"\nScan complete. Found {len(results)} items ({engine.format_bytes(total_size)})")
+
     if args.dry_run:
-        logging.info(f"\n[DRY RUN SUMMARY] Would delete {count} items ({engine.format_bytes(size)})")
+        logging.info("[DRY RUN] No files were touched.")
     else:
-        # Clean
-        if count > 0:
-            deleted_count, cleared_size = engine.clean(cli_log)
-            logging.info(f"\n--- Summary ---")
-            logging.info(f"Files/Folders Deleted: {deleted_count}")
-            logging.info(f"Disk space cleared: {engine.format_bytes(cleared_size)}")
-        else:
-            logging.info("No files found to clean.")
+        # For CLI, we clean everything found (no manual review step yet)
+        deleted_count, cleared_size = engine.clean(results, lambda m: logging.info(m))
+        logging.info(f"\n--- Summary ---")
+        logging.info(f"Items Trashed: {deleted_count}")
+        logging.info(f"Space Reclaimed: {engine.format_bytes(cleared_size)}")
     
     logging.info("Cleanup session finished.")
 
