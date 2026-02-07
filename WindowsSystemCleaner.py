@@ -204,6 +204,7 @@ class App(ctk.CTk):
 
     def start_analyze(self):
         self.btn_analyze.configure(state="disabled")
+        self.btn_clean.configure(state="disabled")
         self.prog_bar.configure(mode="indeterminate")
         self.prog_bar.start()
         for widget in self.review_frame.winfo_children(): widget.destroy()
@@ -230,8 +231,11 @@ class App(ctk.CTk):
             cb.select()
             self.checkboxes.append((item, cb))
             
-        if results: self.btn_clean.configure(state="normal")
-        self.status_lbl.configure(text="Analysis complete. Review results before cleaning.")
+        if results:
+            self.btn_clean.configure(state="normal")
+            self.status_lbl.configure(text="Analysis complete. Review results before cleaning.")
+        else:
+            self.status_lbl.configure(text="Scan complete. No items found to clean.")
 
     def start_clean(self):
         items_to_del = [item for item, cb in self.checkboxes if cb.get()]
