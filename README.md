@@ -1,42 +1,61 @@
-# Windows System Cleaner
+# 🛡️ Windows System Cleaner
 
-A powerful utility to automate the cleanup of temporary files and the Recycle Bin on Windows.
+A professional, local-only cleanup utility designed for power users and developers. Reclaim disk space by purging caches and hunting down old project bloat.
 
-## Features
-- **Modern GUI:** A professional, dark-themed dashboard built with CustomTkinter.
-- **Deep Cleaning:** Targets User Temp, System Temp, Prefetch, **Discord Cache**, and **Spotify Cache**.
-- **Dev-Bloat Hunter:** Safely scans for old `node_modules` and `venv` folders (30+ days untouched).
+![Language](https://img.shields.io/badge/Language-Python-blue)
+![Platform](https://img.shields.io/badge/Platform-Windows-green)
+![Security](https://img.shields.io/badge/Security-Local--Only-brightgreen)
+
+## ✨ Key Features
+- **Modern Dashboard:** High-performance UI built with `CustomTkinter`.
+- **Deep Cleaning:** Targets User Temp, System Temp, Prefetch, **Discord**, and **Spotify** caches.
+- **Dev-Bloat Hunter:** Automatically finds `node_modules` or `venv` folders untouched for 30+ days.
 - **Safety First:** 
-  - **Local-Only:** No internet access or data collection.
-  - **Grace Period:** Automatically protects files modified in the last 24 hours.
-- **Empties the Recycle Bin** (Optional toggle).
+  - **24h Grace Period:** Protects files modified within the last 24 hours.
+  - **Local-Only:** Zero data collection, zero telemetry.
+- **Splash Screen:** Instant visual feedback on startup.
 
-## Installation
-1. **Download the code** (or clone the repo).
-2. **Install Python** (make sure to check "Add Python to PATH" during installation).
-3. **Install dependencies** by running this in your terminal:
+---
+
+## 🚀 Installation & Usage
+
+### Option 1: Standalone (Recommended for Users)
+1. Go to the [Releases](https://github.com/chiranthanreddy-cpu/windows-system-cleaner/releases) page.
+2. Download `Windows System Cleaner.exe`.
+3. Right-click and **Run as Administrator** (required for deep system cleaning).
+
+### Option 2: Run from Source (For Developers)
+1. **Clone the repo:**
+   ```powershell
+   git clone https://github.com/chiranthanreddy-cpu/windows-system-cleaner.git
+   cd windows-system-cleaner
+   ```
+2. **Install requirements:**
    ```powershell
    pip install -r requirements.txt
    ```
-
-## Usage (GUI)
-To launch the modern interface:
-1. Open your terminal (PowerShell or Command Prompt).
-2. Navigate to this folder.
-3. Run:
+3. **Launch the App:**
    ```powershell
    python WindowsSystemCleaner.py
    ```
-*Note: Run your terminal as **Administrator** to unlock deep system cleaning capabilities.*
 
-## Usage (CLI)
-For a quick, text-based cleanup without a GUI:
+---
+
+## 🛠️ CLI Mode
+For automated or headless cleanup, use the CLI tool:
 ```powershell
 python SystemCleanerCLI.py
 ```
-
-### Dry Run (Recommended first)
-To see what will be deleted without actually removing any files:
+**Dry Run (Safety Check):**
 ```powershell
 python SystemCleanerCLI.py --dry-run
 ```
+
+## ⚙️ Configuration
+The app uses a `config.json` file created on the first run. You can manually adjust:
+- `grace_period_hours`: Default is 24.
+- `targets`: List of folders to clean.
+- `empty_recycle_bin`: Boolean toggle.
+
+---
+*Created by [Chiranthan Reddy](https://github.com/chiranthanreddy-cpu)*
