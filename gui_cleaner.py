@@ -7,6 +7,7 @@ import json
 import threading
 import time
 from datetime import datetime
+from PIL import Image
 
 # --- Core Logic ---
 
@@ -80,12 +81,33 @@ class CleanerEngine:
             
         return [p for p in paths if p and os.path.exists(p)]
 
+    def find_dev_bloat(self, log_callback):
+        log_callback("Hunting for Dev-Bloat (node_modules/venv)...")
+        home = os.path.expanduser("~")
+        bloat_found = []
+        # Limit search to 2 levels deep to avoid scanning the entire drive
+        try:
+            for root, dirs, _ in os.walk(home):
+                if root.count(os.sep) - home.count(os.sep) > 2:
+                    del dirs[:] # Don't go deeper than 2 levels
+                    continue
+                
+                for d in dirs:
+                    if d in ["node_modules", "venv", ".venv"]:
+                        path = os.path.join(root, d)
+                        # Check if untouched for 30 days
+                        if (time.time() - os.path.getmtime(path)) > (30 * 24 * 3600):
+                            bloat_found.append(path)
+        except: pass
+        return bloat_found
+
     def scan(self, log_callback):
         self.last_scan_results = []
         total_size = 0
         now = time.time()
         grace_period = self.config["grace_period_hours"] * 3600
 
+        # Standard Targets
         for target in self.get_target_paths():
             log_callback(f"Scanning: {os.path.basename(target)}...")
             try:
@@ -98,6 +120,13 @@ class CleanerEngine:
                             total_size += size
                     except: continue
             except: continue
+        
+        # Dev-Bloat Hunter (Optional/Experimental)
+        if self.config.get("dev_bloat_hunter"):
+            for path in self.find_dev_bloat(log_callback):
+                size = self.get_size(path)
+                self.last_scan_results.append((path, size))
+                total_size += size
         
         return len(self.last_scan_results), total_size
 
@@ -132,6 +161,19 @@ class App(ctk.CTk):
         super().__init__()
         self.title("Lumina Cleaner Pro")
         self.geometry("900x600")
+        
+        # Windows Taskbar Icon Fix (Force OS to recognize custom icon)
+        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except: pass
+
+        # Set App Icon
+        self.base_path = os.path.dirname(__file__)
+        icon_path = os.path.join(self.base_path, "logo.ico")
+        if os.path.exists(icon_path):
+            self.iconbitmap(icon_path)
+            
         self.engine = CleanerEngine("config.json")
         
         # Grid layout
@@ -142,8 +184,17 @@ class App(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
-        self.logo = ctk.CTkLabel(self.sidebar, text="LUMINA", font=ctk.CTkFont(size=24, weight="bold", family="Segoe UI"))
-        self.logo.pack(pady=30)
+        # Sidebar Logo Image
+        logo_img_path = os.path.join(self.base_path, "logo.png")
+        if os.path.exists(logo_img_path):
+            self.logo_image = ctk.CTkImage(light_image=Image.open(logo_img_path),
+                                            dark_image=Image.open(logo_img_path),
+                                            size=(80, 80))
+            self.logo_img_label = ctk.CTkLabel(self.sidebar, image=self.logo_image, text="")
+            self.logo_img_label.pack(pady=(30, 0))
+
+        self.logo_text = ctk.CTkLabel(self.sidebar, text="LUMINA", font=ctk.CTkFont(size=24, weight="bold", family="Segoe UI"))
+        self.logo_text.pack(pady=(10, 30))
 
         self.btn_dash = ctk.CTkButton(self.sidebar, text="Dashboard", fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w", command=self.show_dash)
         self.btn_dash.pack(fill="x", padx=20, pady=5)
@@ -220,6 +271,10 @@ class App(ctk.CTk):
         self.sw_bin.pack(pady=10, padx=30, anchor="w")
         if self.engine.config.get("empty_recycle_bin"): self.sw_bin.select()
 
+        self.sw_dev = ctk.CTkSwitch(s_frame, text="Enable Dev-Bloat Hunter (node_modules/venv)", command=self.toggle_dev)
+        self.sw_dev.pack(pady=10, padx=30, anchor="w")
+        if self.engine.config.get("dev_bloat_hunter"): self.sw_dev.select()
+
     def show_dash(self):
         self.content_settings.grid_forget()
         self.content_dash.grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
@@ -246,6 +301,11 @@ class App(ctk.CTk):
     def toggle_bin(self):
         self.engine.config["empty_recycle_bin"] = bool(self.sw_bin.get())
         self.engine.save_config()
+
+    def toggle_dev(self):
+        self.engine.config["dev_bloat_hunter"] = bool(self.sw_dev.get())
+        self.engine.save_config()
+        self.log(f"Dev-Bloat Hunter {'enabled' if self.sw_dev.get() else 'disabled'}")
 
     # Threading Wrappers
     def start_analyze(self):
