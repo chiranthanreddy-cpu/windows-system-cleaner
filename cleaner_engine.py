@@ -7,9 +7,13 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-# Setup internal engine logging
+# Setup internal engine logging in a writable location
+log_dir = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))) / "WindowsSystemCleaner"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / "engine_debug.log"
+
 logging.basicConfig(
-    filename="engine_debug.log",
+    filename=str(log_file),
     level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
