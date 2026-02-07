@@ -1595,6 +1595,9 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\Lib\\pydoc_data\\topics.py',
    'PYMODULE'),
+  ('pyi_splash',
+   'C:\\Users\\chiru\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\PyInstaller\\fake-modules\\pyi_splash.py',
+   'PYMODULE'),
   ('queue',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\Lib\\queue.py',
