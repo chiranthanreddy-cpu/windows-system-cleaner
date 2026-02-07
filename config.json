@@ -4,6 +4,8 @@
     "targets": [
         "TEMP",
         "SYSTEM_TEMP",
-        "PREFETCH"
+        "PREFETCH",
+        "DISCORD",
+        "SPOTIFY"
     ]
 }

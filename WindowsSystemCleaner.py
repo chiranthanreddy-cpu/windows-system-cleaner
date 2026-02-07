@@ -9,6 +9,11 @@ import time
 from datetime import datetime
 from PIL import Image
 
+try:
+    import pyi_splash
+except ImportError:
+    pyi_splash = None
+
 # --- Core Logic ---
 
 class CleanerEngine:
@@ -212,6 +217,10 @@ class App(ctk.CTk):
         self.setup_dashboard()
         self.setup_settings()
         self.show_dash()
+
+        # Close splash screen if running as EXE
+        if pyi_splash:
+            pyi_splash.close()
 
     def setup_dashboard(self):
         # Stats Row
