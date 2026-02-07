@@ -1,0 +1,5 @@
+*.png linguist-vendored
+*.ico linguist-vendored
+*.spec linguist-vendored
+*.ps1 linguist-vendored
+*.json linguist-vendored
