@@ -16,7 +16,7 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-    splash = Splash(
+splash = Splash(
     'assets/final_splash.png',
     binaries=a.binaries,
     datas=a.datas,
