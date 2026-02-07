@@ -41,4 +41,4 @@ python cleaner.py --dry-run
 To clean system-protected folders, run your terminal as an Administrator.
 
 ## Version
-1.0.0
+1.1.0
