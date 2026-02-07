@@ -19,6 +19,8 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
+    splash,
+    splash.binaries,
     a.binaries,
     a.datas,
     [],
