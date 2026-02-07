@@ -7,3 +7,10 @@ ENV/
 .idea/
 .vscode/
 *.log
+
+# PyInstaller
+build/
+dist/
+*.spec
+final_splash.png
+splash_logo.png
