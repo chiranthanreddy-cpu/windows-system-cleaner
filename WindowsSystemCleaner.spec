@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['WindowsSystemCleaner.py'],
+    ['WindowsSystemCleaner.py', 'cleaner_engine.py'],
     pathex=[],
     binaries=[],
     datas=[],
