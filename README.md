@@ -1,19 +1,26 @@
 # Windows System Cleaner
 
-A simple Python script to automate the cleanup of temporary files and the Recycle Bin on Windows.
+A powerful utility to automate the cleanup of temporary files and the Recycle Bin on Windows.
 
 ## Features
-- Cleans User Temp folder (`%TEMP%`)
-- Cleans System Temp folder (`C:\Windows\Temp`)
-- Cleans Prefetch folder (requires Administrator privileges)
-- Empties the Recycle Bin
-- **Dry Run Mode**: Preview changes before they happen
-- **Logging**: Keeps a history of cleanups in `cleanup.log`
-- **Safety Grace Period**: Automatically skips any files modified within the last 24 hours to prevent deleting active data.
-- **Auto-Scheduling**: Includes a script to set up a weekly Windows Scheduled Task.
+- **Modern GUI (Lumina Cleaner Pro):** A professional, dark-themed dashboard built with CustomTkinter.
+- **Deep Cleaning:** Targets User Temp, System Temp, Prefetch, **Discord Cache**, and **Spotify Cache**.
+- **Safety First:** 
+  - **Local-Only:** No internet access or data collection.
+  - **Grace Period:** Automatically protects files modified in the last 24 hours.
+  - **Review Mode:** Analyze what will be deleted before committing.
+- **Empties the Recycle Bin** (Optional toggle).
+- **Auto-Scheduling:** Includes a script to set up a weekly background task.
 
-## Usage
-Run the script using Python:
+## Usage (GUI)
+To launch the modern interface:
+```powershell
+python gui_cleaner.py
+```
+*Note: Run your terminal as Administrator to unlock deep system cleaning capabilities.*
+
+## Usage (CLI)
+Run the classic script using Python:
 ```powershell
 python cleaner.py
 ```
@@ -41,4 +48,4 @@ python cleaner.py --dry-run
 To clean system-protected folders, run your terminal as an Administrator.
 
 ## Version
-1.1.0
+2.0.0
