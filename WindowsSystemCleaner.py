@@ -142,6 +142,13 @@ class App(ctk.CTk):
         self.sw_dev.pack(pady=10, padx=30, anchor="w")
         if self.engine.config.get("dev_bloat_hunter"): self.sw_dev.select()
 
+        ctk.CTkLabel(self.content_settings, text="System Integration", font=ctk.CTkFont(weight="bold")).pack(pady=(20, 5), anchor="w", padx=45)
+        i_frame = ctk.CTkFrame(self.content_settings, corner_radius=15)
+        i_frame.pack(fill="x", padx=40, pady=10)
+        
+        self.btn_install = ctk.CTkButton(i_frame, text="Add to Start Menu / Register App", command=self.create_start_menu_shortcut)
+        self.btn_install.pack(pady=15, padx=30, fill="x")
+
         ctk.CTkLabel(self.content_settings, text="Search Locations (Dev-Bloat)", font=ctk.CTkFont(weight="bold")).pack(pady=(20, 5), anchor="w", padx=45)
         p_frame = ctk.CTkFrame(self.content_settings, corner_radius=15)
         p_frame.pack(fill="both", expand=True, padx=40, pady=10)
@@ -174,6 +181,40 @@ class App(ctk.CTk):
         self.engine.config["empty_recycle_bin"] = bool(self.sw_bin.get())
         self.engine.config["dev_bloat_hunter"] = bool(self.sw_dev.get())
         self.engine.save_config()
+
+    def create_start_menu_shortcut(self):
+        try:
+            import win32com.client
+            import winreg
+            
+            exe_path = str(Path(os.sys.executable if not getattr(os.sys, 'frozen', False) else os.sys.executable).absolute())
+            if not exe_path.endswith(".exe"): # Handle running from python.exe
+                 exe_path = str((self.base_path.parent / "dist" / "WindowsSystemCleaner.exe").absolute())
+
+            working_dir = str(Path(exe_path).parent)
+            icon_path = str((self.assets_path / "logo.ico").absolute())
+            shortcut_path = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Windows System Cleaner.lnk")
+
+            shell = win32com.client.Dispatch("WScript.Shell")
+            shortcut = shell.CreateShortCut(shortcut_path)
+            shortcut.Targetpath = exe_path
+            shortcut.WorkingDirectory = working_dir
+            shortcut.IconLocation = icon_path
+            shortcut.save()
+
+            # Registry registration
+            reg_path = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\WindowsSystemCleaner"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path) as key:
+                winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Windows System Cleaner")
+                winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, icon_path)
+                winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "1.2.1")
+                winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "Chiranthan Reddy")
+                winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, working_dir)
+            
+            messagebox.showinfo("Success", "Application successfully added to Start Menu and registered!")
+        except Exception as e:
+            logging.error(f"Failed to create shortcut: {e}")
+            messagebox.showerror("Error", f"Failed to create shortcut: {e}")
 
     def show_dash(self):
         self.content_settings.grid_forget(); self.content_dash.grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
