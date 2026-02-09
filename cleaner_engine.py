@@ -11,7 +11,13 @@ logger = logging.getLogger(__name__)
 
 class CleanerEngine:
     def __init__(self, config_path="config.json"):
-        self.config_path = Path(config_path)
+        # Ensure absolute path for config
+        if not os.path.isabs(config_path):
+            base_dir = Path(__file__).parent
+            self.config_path = base_dir / config_path
+        else:
+            self.config_path = Path(config_path)
+            
         self.config = self.load_config()
         self.is_admin = self.check_admin()
         self.last_scan_results = [] # List of dicts: {'path': Path, 'size': int, 'category': str}
