@@ -55,17 +55,24 @@ class CleanerEngine:
         except Exception:
             return False
 
-    def get_size(self, path: Path):
+    def get_size(self, path: Path, timeout=5):
+        """High-performance size calculation with a safety timeout"""
+        start_time = time.time()
         try:
             if path.is_file():
                 return path.stat().st_size
             total = 0
             with os.scandir(path) as it:
                 for entry in it:
-                    if entry.is_file(follow_symlinks=False):
-                        total += entry.stat().st_size
-                    elif entry.is_dir(follow_symlinks=False):
-                        total += self.get_size(Path(entry.path))
+                    if time.time() - start_time > timeout:
+                        return total
+                    try:
+                        if entry.is_file(follow_symlinks=False):
+                            total += entry.stat().st_size
+                        elif entry.is_dir(follow_symlinks=False):
+                            total += self.get_size(Path(entry.path), timeout - (time.time() - start_time))
+                    except (PermissionError, FileNotFoundError):
+                        continue
             return total
         except Exception:
             return 0
@@ -99,27 +106,33 @@ class CleanerEngine:
         return paths
 
     def find_bloat_recursive(self, current_path: Path, depth: int, max_depth: int, log_callback):
-        """Elegant recursive search for dev artifacts"""
+        """Optimized recursive search with intelligent path skipping"""
         if depth > max_depth:
             return []
+        
+        # Folders to completely ignore to save time
+        ignore_list = ["AppData", "Documents", "Pictures", "Music", "Videos", "Desktop", 
+                       ".git", ".vscode", "node_modules", "venv", ".venv", "Downloads"]
         
         found = []
         try:
             with os.scandir(current_path) as it:
                 for entry in it:
                     if entry.is_dir(follow_symlinks=False):
-                        # Professional target detection
-                        if entry.name in ["node_modules", "venv", ".venv"]:
-                            # Check if older than 30 days
-                            if (time.time() - entry.stat().st_mtime) > (30 * 24 * 3600):
-                                found.append(Path(entry.path))
-                        else:
-                            # Recurse deeper if not a target
+                        if entry.name in ignore_list:
+                            if entry.name in ["node_modules", "venv", ".venv"]:
+                                try:
+                                    if (time.time() - entry.stat().st_mtime) > (30 * 24 * 3600):
+                                        found.append(Path(entry.path))
+                                except Exception: pass
+                            continue
+                        
+                        if not entry.name.startswith("."):
                             found.extend(self.find_bloat_recursive(Path(entry.path), depth + 1, max_depth, log_callback))
         except (PermissionError, FileNotFoundError):
             pass
         except Exception as e:
-            logger.error(f"Error in recursive scan at {current_path}: {e}")
+            logger.debug(f"Scan error at {current_path}: {e}")
             
         return found
 
@@ -128,12 +141,17 @@ class CleanerEngine:
         total_size = 0
         now = time.time()
         grace_period = self.config.get("grace_period_hours", 24) * 3600
+        whitelist = ["Lenovo", "Microsoft", "Package Cache", "Temp", "Speech", "SGR"]
 
         # 1. Standard Targets (System/App Caches)
         for target, cat in self.get_standard_targets():
             log_callback(f"Scanning: {cat}...")
             try:
                 for item in target.iterdir():
+                    # Skip whitelisted items during scan so they don't appear in results
+                    if item.name in whitelist:
+                        continue
+                        
                     try:
                         if (now - item.stat().st_mtime) > grace_period:
                             size = self.get_size(item)
@@ -159,24 +177,59 @@ class CleanerEngine:
         
         return self.last_scan_results
 
+    def calculate_health_score(self, total_bytes):
+        """
+        Calculates health percentage based on total junk size.
+        Threshold: 1GB = 100% full (Needs cleaning)
+        Uses logarithmic scaling so small amounts don't look scary.
+        """
+        if total_bytes < 1024 * 1024 * 10: # Under 10MB is basically 0%
+            return 0
+        
+        # 1GB threshold for 'Full' meter
+        max_junk = 1024 * 1024 * 1024 
+        
+        import math
+        # Logarithmic scale: percentage = log(size) / log(max)
+        # This makes the first 100MB feel more significant than the last 100MB
+        score = (math.log(total_bytes) / math.log(max_junk)) * 100
+        return min(100, max(0, score))
+
     def clean(self, items_to_delete, log_callback):
-        """Professional Deletion using Send2Trash (Move to Recycle Bin)"""
+        """Resilient Deletion: Send2Trash -> Direct Delete -> Log Failure"""
         files_deleted = 0
         size_cleared = 0
+        
+        # Whitelist of folders that should NEVER be touched (usually causes loops or errors)
+        whitelist = ["Lenovo", "Microsoft", "Package Cache", "Temp"] # Specific named items to skip
         
         for item in items_to_delete:
             item_path = item['path']
             size = item['size']
+            
+            if item_path.name in whitelist:
+                logger.debug(f"Skipping whitelisted item: {item_path}")
+                continue
+
             try:
-                log_callback(f"Trashing: {item_path.name}")
-                # Industry standard: Send to Recycle Bin for safety
-                send2trash(str(item_path))
+                log_callback(f"Cleaning: {item_path.name}")
+                # Try professional trashing first
+                try:
+                    send2trash(str(item_path))
+                except Exception:
+                    # Fallback: Direct deletion if Recycle Bin is not available for this path
+                    if item_path.is_file():
+                        os.remove(item_path)
+                    else:
+                        import shutil
+                        shutil.rmtree(item_path)
+                
                 files_deleted += 1
                 size_cleared += size
             except PermissionError:
-                log_callback(f"Skipped: {item_path.name} (In use)")
+                log_callback(f"Skipped: {item_path.name} (In Use)")
             except Exception as e:
-                logger.error(f"Failed to trash {item_path}: {e}")
+                logger.error(f"Permanent failure for {item_path}: {e}")
                 log_callback(f"Error: {item_path.name}")
         
         if self.config.get("empty_recycle_bin"):
