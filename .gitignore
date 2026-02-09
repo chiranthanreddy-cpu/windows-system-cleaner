@@ -14,3 +14,5 @@ dist/
 *.spec
 final_splash.png
 splash_logo.png
+config.json
+engine_debug.log

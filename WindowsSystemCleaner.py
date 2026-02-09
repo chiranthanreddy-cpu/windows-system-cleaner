@@ -41,8 +41,10 @@ class App(ctk.CTk):
         
         icon_path = self.assets_path / "logo.ico"
         if icon_path.exists(): self.iconbitmap(str(icon_path))
-            
-        self.engine = CleanerEngine("config.json")
+
+        log_dir = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))) / "WindowsSystemCleaner"
+        log_dir.mkdir(exist_ok=True)
+        self.engine = CleanerEngine(str(log_dir / "config.json"))
         self.scan_results = []
         self.checkbox_vars = [] # List of (dict, StringVar)
         
@@ -210,6 +212,9 @@ class App(ctk.CTk):
                 winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "1.2.1")
                 winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "Chiranthan Reddy")
                 winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, working_dir)
+                
+                uninstall_cmd = f'powershell.exe -Command "Remove-Item -Path \\"{shortcut_path}\\" -Force; Remove-Item -Path \\"{working_dir}\\" -Recurse -Force; Remove-Item -Path \\"HKCU:\\{reg_path}\\" -Force"'
+                winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, uninstall_cmd)
             
             messagebox.showinfo("Success", "Application successfully added to Start Menu and registered!")
         except Exception as e:
