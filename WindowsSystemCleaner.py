@@ -247,8 +247,17 @@ class App(ctk.CTk):
 
 if __name__ == "__main__":
     try:
+        # Final safety check for stuck processes
         app = App()
         app.mainloop()
     except Exception as e:
-        import traceback; error_msg = f"Fatal Error:\n{traceback.format_exc()}"
-        temp_root = tk.Tk(); temp_root.withdraw(); messagebox.showerror("Startup Error", error_msg); temp_root.destroy()
+        import traceback
+        error_msg = f"Fatal Error:\n{traceback.format_exc()}"
+        logging.critical(error_msg)
+        try:
+            temp_root = tk.Tk()
+            temp_root.withdraw()
+            messagebox.showerror("Startup Error", error_msg)
+            temp_root.destroy()
+        except:
+            print(error_msg)
