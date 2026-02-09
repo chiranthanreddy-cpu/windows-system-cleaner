@@ -39,8 +39,12 @@ class App(ctk.CTk):
         self.base_path = Path(__file__).parent
         self.assets_path = self.base_path / "assets"
         
-        icon_path = self.assets_path / "logo.ico"
-        if icon_path.exists(): self.iconbitmap(str(icon_path))
+        # Resource Resilience: Don't crash if icon is missing
+        try:
+            icon_path = self.assets_path / "logo.ico"
+            if icon_path.exists(): self.iconbitmap(str(icon_path))
+        except Exception as e:
+            logging.warning(f"Could not load icon: {e}")
 
         log_dir = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))) / "WindowsSystemCleaner"
         log_dir.mkdir(exist_ok=True)
@@ -56,6 +60,15 @@ class App(ctk.CTk):
         self.show_dash()
 
         if pyi_splash: self.after(200, self.close_splash)
+        
+        # User Friendly: Auto-prompt to install on first run
+        self.after(1000, self.check_first_run_install)
+
+    def check_first_run_install(self):
+        shortcut_path = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Windows System Cleaner.lnk")
+        if not os.path.exists(shortcut_path):
+            if messagebox.askyesno("Easy Setup", "Would you like to add Windows System Cleaner to your Start Menu for easy access?"):
+                self.create_start_menu_shortcut()
 
     def close_splash(self):
         if pyi_splash:
@@ -66,12 +79,19 @@ class App(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
+        # Resource Resilience: Check image before loading
         logo_img_path = self.assets_path / "logo.png"
         if logo_img_path.exists():
-            self.logo_image = ctk.CTkImage(light_image=Image.open(logo_img_path),
-                                            dark_image=Image.open(logo_img_path),
-                                            size=(80, 80))
-            ctk.CTkLabel(self.sidebar, image=self.logo_image, text="").pack(pady=(30, 0))
+            try:
+                self.logo_image = ctk.CTkImage(light_image=Image.open(logo_img_path),
+                                                dark_image=Image.open(logo_img_path),
+                                                size=(80, 80))
+                ctk.CTkLabel(self.sidebar, image=self.logo_image, text="").pack(pady=(30, 0))
+            except Exception as e:
+                logging.warning(f"Could not load logo image: {e}")
+                ctk.CTkLabel(self.sidebar, text="🛡", font=ctk.CTkFont(size=50)).pack(pady=(30, 0))
+        else:
+            ctk.CTkLabel(self.sidebar, text="🛡", font=ctk.CTkFont(size=50)).pack(pady=(30, 0))
 
         ctk.CTkLabel(self.sidebar, text="SYSTEM\nCLEANER", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(10, 30))
         self.btn_dash = ctk.CTkButton(self.sidebar, text="Dashboard", fg_color="transparent", anchor="w", command=self.show_dash)
@@ -270,7 +290,12 @@ class App(ctk.CTk):
     def start_clean(self):
         items_to_del = [item for item, var in self.checkbox_vars if var.get() == "on"]
         if not items_to_del: return
-        if messagebox.askyesno("Confirm", f"Move {len(items_to_del)} items to Recycle Bin?"):
+        
+        msg = f"Move {len(items_to_del)} items to Recycle Bin?"
+        if self.engine.config.get("empty_recycle_bin"):
+            msg += "\n\n⚠️ WARNING: 'Empty Recycle Bin' is ENABLED. These items will be PERMANENTLY deleted after being moved."
+            
+        if messagebox.askyesno("Confirm Cleanup", msg):
             self.btn_clean.configure(state="disabled"); self.btn_analyze.configure(state="disabled")
             threading.Thread(target=self.work_clean, args=(items_to_del,), daemon=True).start()
 

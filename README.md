@@ -21,36 +21,22 @@ A professional, local-only cleanup utility designed for power users and develope
 ## 🚀 Installation & Usage
 
 ### Option 1: Standalone (Recommended for Users)
-1. Go to the [Releases](https://github.com/chiranthanreddy-cpu/windows-system-cleaner/releases) page.
-2. Download `Windows System Cleaner.exe`.
-3. Right-click and **Run as Administrator** (required for deep system cleaning).
+1. **[Download Latest WindowsSystemCleaner.exe](https://github.com/chiranthanreddy-cpu/windows-system-cleaner/releases/latest/download/WindowsSystemCleaner.exe)**
+2. Run the `.exe` and click **"Yes"** when it asks to add itself to your Start Menu.
 
-### Option 2: Run from Source (For Developers)
-1. **Clone the repo:**
-   ```powershell
-   git clone https://github.com/chiranthanreddy-cpu/windows-system-cleaner.git
-   cd windows-system-cleaner
-   ```
-2. **Install requirements:**
-   ```powershell
-   pip install -r requirements.txt
-   ```
-3. **Launch the App:**
-   ```powershell
-   python WindowsSystemCleaner.py
-   ```
+### Option 2: ZIP Download / Developer Mode
+1. Extract the downloaded ZIP folder.
+2. Double-click **`setup.bat`**. This will automatically install dependencies and launch the app.
+3. Once open, go to **Settings** and click **"Add to Start Menu"** to finish setup.
+
+### Manual Setup (CLI)
+If you prefer the terminal:
+```powershell
+pip install -r requirements.txt
+python WindowsSystemCleaner.py
+```
 
 ---
-
-## 🛠️ CLI Mode
-For automated or headless cleanup, use the CLI tool:
-```powershell
-python SystemCleanerCLI.py
-```
-**Dry Run (Safety Check):**
-```powershell
-python SystemCleanerCLI.py --dry-run
-```
 
 ## ⚙️ Configuration
 The app uses a `config.json` file created on the first run. You can manually adjust:
