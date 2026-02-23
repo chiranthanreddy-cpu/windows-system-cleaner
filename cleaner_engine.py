@@ -10,44 +10,18 @@ from send2trash import send2trash
 logger = logging.getLogger(__name__)
 
 class CleanerEngine:
-    def __init__(self, config_path="config.json"):
-        # Ensure absolute path for config
-        if not os.path.isabs(config_path):
-            base_dir = Path(__file__).parent
-            self.config_path = base_dir / config_path
-        else:
-            self.config_path = Path(config_path)
-            
-        self.config = self.load_config()
+    def __init__(self, config_manager):
+        self.config_manager = config_manager
+        self.config = config_manager # Alias for backward compatibility/ease of use
+        
+        # Whitelist of folders that should NEVER be touched
+        self.WHITELIST = ["Lenovo", "Microsoft", "Package Cache", "Temp", "Speech", "SGR"]
+        
         self.is_admin = self.check_admin()
         self.last_scan_results = [] # List of dicts: {'path': Path, 'size': int, 'category': str}
 
-    def load_config(self):
-        default_config = {
-            "grace_period_hours": 24,
-            "empty_recycle_bin": True,
-            "targets": ["TEMP", "SYSTEM_TEMP", "PREFETCH", "DISCORD", "SPOTIFY"],
-            "dev_bloat_hunter": False,
-            "search_paths": [str(Path.home())],
-            "max_scan_depth": 3
-        }
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, "r") as f:
-                    cfg = json.load(f)
-                    for k, v in default_config.items():
-                        if k not in cfg: cfg[k] = v
-                    return cfg
-            except Exception as e:
-                logger.error(f"Failed to load config: {e}")
-        return default_config
+    # Config loading/saving moved to ConfigManager
 
-    def save_config(self):
-        try:
-            with open(self.config_path, "w") as f:
-                json.dump(self.config, f, indent=4)
-        except Exception as e:
-            logger.error(f"Failed to save config: {e}")
 
     def check_admin(self):
         try:
@@ -110,9 +84,9 @@ class CleanerEngine:
         if depth > max_depth:
             return []
         
-        # Folders to completely ignore to save time
-        ignore_list = ["AppData", "Documents", "Pictures", "Music", "Videos", "Desktop", 
-                       ".git", ".vscode", "node_modules", "venv", ".venv", "Downloads"]
+        # Folders to completely ignore to save time (Updated to allow traversing User/Documents/Desktop)
+        ignore_list = ["AppData", "Pictures", "Music", "Videos", 
+                       ".git", ".vscode", "node_modules", "venv", ".venv"]
         
         found = []
         try:
@@ -136,44 +110,73 @@ class CleanerEngine:
             
         return found
 
+    def _scan_category(self, target, cat, grace_period, log_callback):
+        """Helper to scan a single category (Thread-safe execution)"""
+        results = []
+        local_total = 0
+        now = time.time()
+        
+        try:
+            log_callback(f"Scanning: {cat}...")
+            for item in target.iterdir():
+                if item.name in self.WHITELIST:
+                    continue
+                    
+                try:
+                    if (now - item.stat().st_mtime) > grace_period:
+                        size = self.get_size(item)
+                        results.append({'path': item, 'size': size, 'category': cat})
+                        local_total += size
+                except (PermissionError, FileNotFoundError):
+                    continue
+        except Exception as e:
+            logger.error(f"Failed to scan {cat}: {e}")
+            
+        return results
+
     def scan(self, log_callback):
         self.last_scan_results = []
         total_size = 0
-        now = time.time()
         grace_period = self.config.get("grace_period_hours", 24) * 3600
-        whitelist = ["Lenovo", "Microsoft", "Package Cache", "Temp", "Speech", "SGR"]
-
-        # 1. Standard Targets (System/App Caches)
-        for target, cat in self.get_standard_targets():
-            log_callback(f"Scanning: {cat}...")
-            try:
-                for item in target.iterdir():
-                    # Skip whitelisted items during scan so they don't appear in results
-                    if item.name in whitelist:
-                        continue
-                        
-                    try:
-                        if (now - item.stat().st_mtime) > grace_period:
-                            size = self.get_size(item)
-                            self.last_scan_results.append({'path': item, 'size': size, 'category': cat})
-                            total_size += size
-                    except (PermissionError, FileNotFoundError):
-                        continue
-            except Exception as e:
-                logger.error(f"Failed to scan {target}: {e}")
         
-        # 2. Custom Dev-Bloat Paths (Recursive)
-        if self.config.get("dev_bloat_hunter"):
-            max_depth = self.config.get("max_scan_depth", 3)
-            for path_str in self.config.get("search_paths", []):
-                p = Path(path_str)
-                if p.exists():
-                    log_callback(f"Hunting in: {p.name}...")
-                    bloat_items = self.find_bloat_recursive(p, 1, max_depth, log_callback)
-                    for bloat_path in bloat_items:
-                        size = self.get_size(bloat_path)
-                        self.last_scan_results.append({'path': bloat_path, 'size': size, 'category': 'DEV-BLOAT'})
-                        total_size += size
+        import concurrent.futures
+        
+        # Use a ThreadPool to scan multiple targets at once
+        # Max workers = 4 is usually a sweet spot for disk I/O on typical SSDs
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            stop_event = False # In case we want to add stop logic later
+            futures = []
+            
+            # 1. Submit Standard Targets
+            for target, cat in self.get_standard_targets():
+                futures.append(executor.submit(self._scan_category, target, cat, grace_period, log_callback))
+            
+            # 2. Submit Dev-Bloat (Recursive)
+            if self.config.get("dev_bloat_hunter"):
+                max_depth = self.config.get("max_scan_depth", 3)
+                for path_str in self.config.get("search_paths", []):
+                    p = Path(path_str)
+                    if p.exists():
+                        # We wrap the recursive search in a lambda or helper to fit the executor signature if needed
+                        # But here we can just define a wrapper task
+                        def _scan_bloat(path_to_scan):
+                             log_callback(f"Hunting in: {path_to_scan.name}...")
+                             found = []
+                             bloat_items = self.find_bloat_recursive(path_to_scan, 1, max_depth, log_callback)
+                             for bloat_path in bloat_items:
+                                 size = self.get_size(bloat_path)
+                                 found.append({'path': bloat_path, 'size': size, 'category': 'DEV-BLOAT'})
+                             return found
+                        
+                        futures.append(executor.submit(_scan_bloat, p))
+            
+            # 3. Collect Results
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    res = future.result()
+                    self.last_scan_results.extend(res)
+                except Exception as e:
+                    logger.error(f"Scan thread failed: {e}")
         
         return self.last_scan_results
 
@@ -201,13 +204,13 @@ class CleanerEngine:
         size_cleared = 0
         
         # Whitelist of folders that should NEVER be touched (usually causes loops or errors)
-        whitelist = ["Lenovo", "Microsoft", "Package Cache", "Temp"] # Specific named items to skip
+
         
         for item in items_to_delete:
             item_path = item['path']
             size = item['size']
             
-            if item_path.name in whitelist:
+            if item_path.name in self.WHITELIST:
                 logger.debug(f"Skipping whitelisted item: {item_path}")
                 continue
 
@@ -217,12 +220,9 @@ class CleanerEngine:
                 try:
                     send2trash(str(item_path))
                 except Exception:
-                    # Fallback: Direct deletion if Recycle Bin is not available for this path
-                    if item_path.is_file():
-                        os.remove(item_path)
-                    else:
-                        import shutil
-                        shutil.rmtree(item_path)
+                    logger.error(f"Send2Trash failed for {item_path}. Skipping permanent delete for safety.")
+                    log_callback(f"Error: Recycle Bin unavailable for {item_path.name}")
+                    continue
                 
                 files_deleted += 1
                 size_cleared += size
