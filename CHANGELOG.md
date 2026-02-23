@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-02-23
+### Changed
+- Improved scanning performance with multi-threading.
+- Enhanced gauge animation with spring physics for a smoother feel.
+- Added a high-performance virtual scroll list for the results view to handle a large number of files without freezing.
+- Made cleaning safer by removing the direct-deletion fallback.
+
+### Fixed
+- Fixed a `SyntaxError` in the backup script.
+- Fixed a `TclError` crash when displaying scan results.
+- Fixed a bug where duplicate methods were defined in the cleaner engine.
+
 ## [1.3.0] - 2026-02-09
 ### The "Deep Space" Update
 ### Added

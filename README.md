@@ -3,7 +3,7 @@
 A premium, local-only cleanup utility designed for power users and developers. Reclaim disk space by purging system caches, app bloat, and long-forgotten project dependencies.
 
 ![Language](https://img.shields.io/badge/Language-Python-blue)
-![Version](https://img.shields.io/badge/Version-1.3.0-blue)
+![Version](https://img.shields.io/badge/Version-1.3.1-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows-green)
 ![Security](https://img.shields.io/badge/Security-Local--Only-brightgreen)
 
